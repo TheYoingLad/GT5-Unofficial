@@ -5,7 +5,6 @@ import static goodgenerator.loader.Loaders.yottaFluidTankCell;
 import static goodgenerator.util.CharExchanger.tierName;
 import static net.minecraft.util.StatCollector.translateToLocal;
 
-import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -16,11 +15,8 @@ import net.minecraft.util.IIcon;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import goodgenerator.blocks.regularBlock.BlockTEContainer;
-import goodgenerator.blocks.tileEntity.MTEEssentiaOutputHatch;
 import goodgenerator.main.GoodGenerator;
 import goodgenerator.util.CharExchanger;
-import goodgenerator.util.DescTextLocalization;
 
 public class GGItemBlocks extends ItemBlock {
 
@@ -65,16 +61,6 @@ public class GGItemBlocks extends ItemBlock {
     public void addInformation(ItemStack stack, EntityPlayer playerIn, List tooltip, boolean advanced) {
         if (stack == null) return;
         tooltip.add(translateToLocal("gt.casing.no-mob-spawning"));
-        if (Block.getBlockFromItem(stack.getItem()) instanceof BlockTEContainer tile) {
-            if (tile.getIndex() == 1)
-                tooltip.addAll(Arrays.asList(DescTextLocalization.addText("EssentiaHatch.tooltip", 2)));
-            if (tile.getIndex() == 2) {
-                tooltip.add(translateToLocal("EssentiaOutputHatch.tooltip.0"));
-                tooltip.add(translateToLocal("EssentiaOutputHatch.tooltip.1") + " " + MTEEssentiaOutputHatch.CAPACITY);
-            }
-        } else {
-            tooltip.add(translateToLocal("gt.casing.not-tile-entity"));
-        }
 
         if (Block.getBlockFromItem(stack.getItem())
             .equals(yottaFluidTankCell)) {

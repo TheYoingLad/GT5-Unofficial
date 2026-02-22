@@ -1,14 +1,12 @@
 package goodgenerator.blocks.tileEntity;
 
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.*;
+import static gregtech.api.enums.HatchElement.*;
 import static gregtech.api.enums.Mods.ThaumicBases;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.api.util.GTUtility.validMTEList;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
@@ -20,8 +18,10 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
+import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
@@ -38,6 +38,7 @@ import goodgenerator.loader.Loaders;
 import goodgenerator.util.DescTextLocalization;
 import gregtech.GTMod;
 import gregtech.api.enums.Textures;
+import gregtech.api.interfaces.IHatchElement;
 import gregtech.api.interfaces.IIconContainer;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
@@ -49,9 +50,11 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
+import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.api.util.shutdown.ShutDownReason;
+import gregtech.common.misc.GTStructureChannels;
 import gregtech.common.pollution.Pollution;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 import thaumcraft.api.aspects.Aspect;
@@ -92,7 +95,7 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
     protected int nodePowerDisplay;
 
     private IStructureDefinition<MTELargeEssentiaSmeltery> multiDefinition = null;
-    private final ArrayList<MTEEssentiaOutputHatch> mEssentiaOutputHatches = new ArrayList<>();
+    private final ArrayList<MTEHatchEssentiaOutput> mEssentiaOutputHatches = new ArrayList<>();
     private int pTier = 0;
     private final XSTR xstr = new XSTR();
 
@@ -129,7 +132,7 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
     protected boolean checkMachine_EM(IGregTechTileEntity iGregTechTileEntity, ItemStack itemStack) {
         this.mCasing = 0;
         this.mParallel = 0;
-        this.pTier = 0;
+        this.pTier = -1;
         this.nodePower = 0;
         this.nodePurificationEfficiency = 0;
         this.nodeIncrease = 0;
@@ -172,30 +175,28 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
                         : ofBlock(ConfigBlocks.blockStoneDevice, 0))
                 .addElement(
                     'E',
-                    ofChain(
-                        onElementPass(x -> x.onEssentiaCellFound(0), ofBlock(Loaders.essentiaCell, 0)),
-                        onElementPass(x -> x.onEssentiaCellFound(1), ofBlock(Loaders.essentiaCell, 1)),
-                        onElementPass(x -> x.onEssentiaCellFound(2), ofBlock(Loaders.essentiaCell, 2)),
-                        onElementPass(x -> x.onEssentiaCellFound(3), ofBlock(Loaders.essentiaCell, 3))))
+                    GTStructureChannels.LES_ESSENTIA_CELL.use(
+                        ofBlocksTiered(
+                            (block, meta) -> block == Loaders.essentiaCell ? meta : null,
+                            ImmutableList.of(
+                                Pair.of(Loaders.essentiaCell, 0),
+                                Pair.of(Loaders.essentiaCell, 1),
+                                Pair.of(Loaders.essentiaCell, 2),
+                                Pair.of(Loaders.essentiaCell, 3)),
+                            -1,
+                            (t, meta) -> t.pTier = meta,
+                            t -> t.pTier)))
+
                 .addElement(
                     'A',
-                    ofChain(
-                        buildHatchAdder(MTELargeEssentiaSmeltery.class)
-                            .atLeast(
-                                gregtech.api.enums.HatchElement.Maintenance,
-                                gregtech.api.enums.HatchElement.Energy,
-                                gregtech.api.enums.HatchElement.InputBus,
-                                gregtech.api.enums.HatchElement.InputHatch)
-                            .casingIndex(CASING_INDEX)
-                            .hint(1)
-                            .build(),
-                        ofSpecificTileAdder(
-                            MTELargeEssentiaSmeltery::addEssentiaOutputHatchToMachineList,
-                            MTEEssentiaOutputHatch.class,
-                            Loaders.essentiaOutputHatch,
-                            0),
-                        onElementPass(MTELargeEssentiaSmeltery::onCasingFound, ofBlock(Loaders.magicCasing, 0))))
-                .addElement('B', gregtech.api.enums.HatchElement.Muffler.newAny(CASING_INDEX, 2))
+                    buildHatchAdder(MTELargeEssentiaSmeltery.class)
+                        .atLeast(Maintenance, Energy, InputBus, InputHatch, EssentiaHatchElement.EssentiaOutputHatch)
+                        .allowOnly(ForgeDirection.NORTH)
+                        .casingIndex(CASING_INDEX)
+                        .hint(1)
+                        .buildAndChain(
+                            onElementPass(MTELargeEssentiaSmeltery::onCasingFound, ofBlock(Loaders.magicCasing, 0))))
+                .addElement('B', Muffler.newAny(CASING_INDEX, 2, ForgeDirection.UP))
                 .build();
         }
         return this.multiDefinition;
@@ -283,13 +284,12 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
         this.mCasing++;
     }
 
-    protected void onEssentiaCellFound(int tier) {
-        this.pTier = tier;
-    }
-
-    private boolean addEssentiaOutputHatchToMachineList(MTEEssentiaOutputHatch aTileEntity) {
-        if (aTileEntity != null) {
-            return this.mEssentiaOutputHatches.add(aTileEntity);
+    private boolean addEssentiaOutputHatchToMachineList(IGregTechTileEntity aTileEntity, int aBaseCasingIndex) {
+        if (aTileEntity == null) return false;
+        IMetaTileEntity aMetaTileEntity = aTileEntity.getMetaTileEntity();
+        if (aMetaTileEntity == null) return false;
+        if (aMetaTileEntity instanceof MTEHatchEssentiaOutput aEssentiaOutput) {
+            return mEssentiaOutputHatches.add(aEssentiaOutput);
         }
         return false;
     }
@@ -417,7 +417,7 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
     }
 
     private void fillEssentiaOutputHatch() {
-        for (MTEEssentiaOutputHatch outputHatch : this.mEssentiaOutputHatches) {
+        for (MTEHatchEssentiaOutput outputHatch : this.mEssentiaOutputHatches) {
             for (Map.Entry<Aspect, Integer> entry : this.mOutputAspects.copy().aspects.entrySet()) {
                 Aspect aspect = entry.getKey();
                 int amount = entry.getValue();
@@ -609,11 +609,31 @@ public class MTELargeEssentiaSmeltery extends MTETooltipMultiBlockBaseEM
         int built = survivalBuildPiece(STRUCTURE_PIECE_FIRST, stackSize, 2, 2, 0, elementBudget, env, false, true);
         if (built >= 0) return built;
         int length = stackSize.stackSize + 2;
-        if (length > MAX_CONFIGURABLE_LENGTH) length = MAX_CONFIGURABLE_LENGTH + 2;
+        if (length > MAX_CONFIGURABLE_LENGTH + 2) length = MAX_CONFIGURABLE_LENGTH + 2;
         for (int i = 1; i <= length; i++) {
             built = survivalBuildPiece(STRUCTURE_PIECE_LATER, stackSize, 2, 2, -i, elementBudget, env, false, true);
             if (built >= 0) return built;
         }
         return survivalBuildPiece(STRUCTURE_PIECE_LAST, stackSize, 2, 2, -length - 1, elementBudget, env, false, true);
+    }
+
+    private enum EssentiaHatchElement implements IHatchElement<MTELargeEssentiaSmeltery> {
+
+        EssentiaOutputHatch;
+
+        @Override
+        public List<? extends Class<? extends IMetaTileEntity>> mteClasses() {
+            return Collections.singletonList(MTEHatchEssentiaOutput.class);
+        }
+
+        @Override
+        public IGTHatchAdder<MTELargeEssentiaSmeltery> adder() {
+            return MTELargeEssentiaSmeltery::addEssentiaOutputHatchToMachineList;
+        }
+
+        @Override
+        public long count(MTELargeEssentiaSmeltery t) {
+            return t.mEssentiaOutputHatches.size();
+        }
     }
 }

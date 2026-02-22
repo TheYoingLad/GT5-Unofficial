@@ -115,6 +115,12 @@ public enum Mixin implements IMixins {
         .setPhase(Phase.EARLY)
         .addCommonMixins("minecraft.VanillaTradingMixin")),
 
+    THAUMCRAFT_MTE_CONNECTION(new MixinBuilder("Thaumcraft MTE Connection")
+        .addCommonMixins("thaumcraft.MixinThaumcraftTileTubeConnectToMTE",
+            "thaumcraft.MixinThaumcraftBlockTubeConnectToMTE")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)),
+
     // Pollution
     POLLUTION_RENDER_BLOCKS(new MixinBuilder()
         .addClientMixins("minecraft.pollution.MixinRenderBlocks_PollutionWithoutOptifine")

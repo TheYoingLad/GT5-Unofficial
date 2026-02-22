@@ -1,7 +1,10 @@
 package goodgenerator.blocks.tileEntity;
 
+import static goodgenerator.loader.Loaders.magicCasing;
+import static net.minecraft.util.StatCollector.translateToLocal;
 import static thaumicenergistics.common.storage.AEEssentiaStackType.ESSENTIA_STACK_TYPE;
 
+import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -16,49 +19,76 @@ import appeng.api.util.DimensionalCoord;
 import appeng.me.GridAccessException;
 import appeng.me.helpers.AENetworkProxy;
 import appeng.me.helpers.IGridProxyable;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import goodgenerator.main.GoodGenerator;
 import goodgenerator.util.ItemRefer;
+import gregtech.api.enums.Textures;
+import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.render.TextureFactory;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumicenergistics.common.storage.AEEssentiaStack;
 
-public class MTEEssentiaOutputHatchME extends MTEEssentiaOutputHatch implements IActionHost, IGridProxyable {
+public class MTEHatchEssentiaOutputME extends MTEHatchEssentiaOutput implements IActionHost, IGridProxyable {
 
     private AENetworkProxy gridProxy = null;
     private IMEMonitor<AEEssentiaStack> monitor = null;
     private final MachineSource asMachineSource = new MachineSource(this);
+    private static Textures.BlockIcons.CustomIcon EHATCH_TX_ME;
     public long mTickTimer = 0;
 
-    @Override
-    public void updateEntity() {
-        AENetworkProxy gp = getProxy();
-        if (mTickTimer++ == 0 && gp != null) {
-            gp.onReady();
-        }
-        super.updateEntity();
+    public MTEHatchEssentiaOutputME(int aID, String aBasicName, String aRegionalName) {
+        super(aID, aBasicName, aRegionalName);
+    }
+
+    public MTEHatchEssentiaOutputME(String aBasicName) {
+        super(aBasicName);
     }
 
     @Override
-    public void invalidate() {
-        super.invalidate();
-        this.invalidateAE();
+    public String[] getDescription() {
+        String[] tooltip = new String[1];
+        tooltip[0] = translateToLocal("gt.casing.no-mob-spawning");
+        return tooltip;
     }
 
     @Override
-    public void onChunkUnload() {
-        super.onChunkUnload();
-        this.onChunkUnloadAE();
+    @SideOnly(Side.CLIENT)
+    public void registerIcons(IIconRegister blockIconRegister) {
+        EHATCH_TX_ME = new Textures.BlockIcons.CustomIcon(GoodGenerator.MOD_ID + ":essentiaOutputHatch_ME");
+        super.registerIcons(blockIconRegister);
     }
 
     @Override
-    public void readFromNBT(NBTTagCompound aNBT) {
-        super.readFromNBT(aNBT);
+    public ITexture[] getTexture(IGregTechTileEntity baseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
+        int colorIndex, boolean active, boolean redstoneLevel) {
+        return new ITexture[] { TextureFactory.of(magicCasing), TextureFactory.of(EHATCH_TX_ME) };
+    }
+
+    @Override
+    public void saveNBTData(NBTTagCompound aNBT) {
+        super.saveNBTData(aNBT);
+        getProxy().writeToNBT(aNBT);
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound aNBT) {
+        super.loadNBTData(aNBT);
         getProxy().readFromNBT(aNBT);
     }
 
     @Override
-    public void writeToNBT(NBTTagCompound aNBT) {
-        super.writeToNBT(aNBT);
-        getProxy().writeToNBT(aNBT);
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return new MTEHatchEssentiaOutputME(mName);
+    }
+
+    @Override
+    public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
+        super.onFirstTick(aBaseMetaTileEntity);
+        getProxy().onReady();
     }
 
     void onChunkUnloadAE() {
@@ -90,13 +120,20 @@ public class MTEEssentiaOutputHatchME extends MTEEssentiaOutputHatch implements 
         if (gridProxy == null) {
             gridProxy = new AENetworkProxy(this, "proxy", ItemRefer.Essentia_Output_Hatch_ME.get(1), true);
             gridProxy.setFlags(GridFlags.REQUIRE_CHANNEL);
+            if (getBaseMetaTileEntity().getWorld() != null) gridProxy.setOwner(
+                getBaseMetaTileEntity().getWorld()
+                    .getPlayerEntityByName(getBaseMetaTileEntity().getOwnerName()));
         }
         return this.gridProxy;
     }
 
     @Override
     public DimensionalCoord getLocation() {
-        return new DimensionalCoord(this.worldObj, this.xCoord, this.yCoord, this.zCoord);
+        return new DimensionalCoord(
+            getBaseMetaTileEntity().getWorld(),
+            getBaseMetaTileEntity().getXCoord(),
+            getBaseMetaTileEntity().getYCoord(),
+            getBaseMetaTileEntity().getZCoord());
     }
 
     @Override

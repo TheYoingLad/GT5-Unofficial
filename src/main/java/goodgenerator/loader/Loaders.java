@@ -13,7 +13,6 @@ import goodgenerator.blocks.regularBlock.AntimatterRenderBlock;
 import goodgenerator.blocks.regularBlock.BlockCasing;
 import goodgenerator.blocks.regularBlock.BlockComplexTextureCasing;
 import goodgenerator.blocks.regularBlock.BlockFrame;
-import goodgenerator.blocks.regularBlock.BlockTEContainer;
 import goodgenerator.blocks.regularBlock.BlockTurbineCasing;
 import goodgenerator.blocks.tileEntity.AntimatterForge;
 import goodgenerator.blocks.tileEntity.AntimatterGenerator;
@@ -23,10 +22,10 @@ import goodgenerator.blocks.tileEntity.GTMetaTileEntity.MTENeutronSensor;
 import goodgenerator.blocks.tileEntity.GTMetaTileEntity.MTEYOTTAHatch;
 import goodgenerator.blocks.tileEntity.MTEComponentAssemblyLine;
 import goodgenerator.blocks.tileEntity.MTECoolantTower;
-import goodgenerator.blocks.tileEntity.MTEEssentiaOutputHatch;
-import goodgenerator.blocks.tileEntity.MTEEssentiaOutputHatchME;
 import goodgenerator.blocks.tileEntity.MTEExtremeHeatExchanger;
 import goodgenerator.blocks.tileEntity.MTEFuelRefineFactory;
+import goodgenerator.blocks.tileEntity.MTEHatchEssentiaOutput;
+import goodgenerator.blocks.tileEntity.MTEHatchEssentiaOutputME;
 import goodgenerator.blocks.tileEntity.MTELargeEssentiaSmeltery;
 import goodgenerator.blocks.tileEntity.MTELargeFusionComputer1;
 import goodgenerator.blocks.tileEntity.MTELargeFusionComputer2;
@@ -238,8 +237,6 @@ public class Loaders {
     public static final Block essentiaFilterCasing = new BlockCasing(
         "essentiaFilterCasing",
         new String[] { GoodGenerator.MOD_ID + ":essentiaFilterCasing" });
-    public static Block essentiaOutputHatch;
-    public static Block essentiaOutputHatch_ME;
     public static final Block componentAssemblylineCasing = new BlockCasing(
         "componentAssemblyLineCasing",
         new String[] { GoodGenerator.MOD_ID + ":compAsslineCasing/0", // LV
@@ -270,6 +267,9 @@ public class Loaders {
     public static ItemStack LES;
     public static ItemStack CT;
     public static ItemStack[] LFC = new ItemStack[5];
+
+    public static ItemStack essentiaOutputHatch;
+    public static ItemStack essentiaOutputHatch_ME;
 
     public static ItemStack[] NeutronAccelerators = new ItemStack[13];
     public static ItemStack[] Generator_Diesel = new ItemStack[2];
@@ -458,25 +458,22 @@ public class Loaders {
 
     public static void compactMod() {
         if (!Mods.Thaumcraft.isModLoaded()) return;
-        GameRegistry.registerTileEntity(MTEEssentiaOutputHatch.class, "EssentiaOutputHatch");
-        GameRegistry.registerTileEntity(MTEEssentiaOutputHatchME.class, "EssentiaOutputHatch_ME");
         Loaders.LES = new MTELargeEssentiaSmeltery(
             MetaTileEntityIDs.LargeEssentiaSmeltery.ID,
             "LargeEssentiaSmeltery",
             "Large Essentia Smeltery").getStackForm(1L);
-        essentiaOutputHatch = new BlockTEContainer(
-            "essentiaOutputHatch",
-            new String[] { GoodGenerator.MOD_ID + ":essentiaOutputHatch" },
-            2);
-        essentiaOutputHatch_ME = new BlockTEContainer(
-            "essentiaOutputHatch_ME",
-            new String[] { GoodGenerator.MOD_ID + ":essentiaOutputHatch_ME" },
-            3);
+        essentiaOutputHatch = new MTEHatchEssentiaOutput(
+            MetaTileEntityIDs.Hatch_Essentia.ID,
+            "EssentiaOutputHatch",
+            "Essentia Output Hatch").getStackForm(1L);
+        essentiaOutputHatch_ME = new MTEHatchEssentiaOutputME(
+            MetaTileEntityIDs.Hatch_Essentia_ME.ID,
+            "EssentiaOutputHatch_ME",
+            "Essentia Output Hatch (ME)").getStackForm(1L);
+
         GameRegistry.registerBlock(magicCasing, GGItemBlocks.class, "magicCasing");
         GameRegistry.registerBlock(essentiaCell, GGItemBlocks.class, "essentiaCell");
-        GameRegistry.registerBlock(essentiaOutputHatch, GGItemBlocks.class, "essentiaOutputHatch");
         GameRegistry.registerBlock(essentiaFilterCasing, GGItemBlocks.class, "essentiaFilterCasing");
-        GameRegistry.registerBlock(essentiaOutputHatch_ME, GGItemBlocks.class, "essentiaOutputHatch_ME");
 
         Textures.BlockIcons.casingTexturePages[GoodGeneratorTexturePage][0] = TextureFactory.of(magicCasing);
     }

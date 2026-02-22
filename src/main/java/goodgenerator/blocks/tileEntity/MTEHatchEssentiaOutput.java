@@ -1,47 +1,80 @@
 package goodgenerator.blocks.tileEntity;
 
+import static goodgenerator.loader.Loaders.magicCasing;
+import static net.minecraft.util.StatCollector.translateToLocal;
+
 import java.util.Map;
 
+import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import thaumcraft.api.TileThaumcraft;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import goodgenerator.main.GoodGenerator;
+import gregtech.api.enums.HarvestTool;
+import gregtech.api.enums.Textures;
+import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.MetaTileEntity;
+import gregtech.api.render.TextureFactory;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IAspectContainer;
 import thaumcraft.api.aspects.IEssentiaTransport;
 
-public class MTEEssentiaOutputHatch extends TileThaumcraft implements IAspectContainer, IEssentiaTransport {
+public class MTEHatchEssentiaOutput extends MetaTileEntity implements IAspectContainer, IEssentiaTransport {
 
     public static final int CAPACITY = 256;
+    private static Textures.BlockIcons.CustomIcon EHATCH_TX;
     protected AspectList mAspects = new AspectList();
 
-    public void clear() {
-        this.mAspects.aspects.clear();
+    public MTEHatchEssentiaOutput(int aID, String aBasicName, String aRegionalName) {
+        super(aID, aBasicName, aRegionalName, 0);
+    }
+
+    public MTEHatchEssentiaOutput(String aBasicName) {
+        super(aBasicName, 0);
     }
 
     @Override
-    public void markDirty() {
-        super.markDirty();
-        if (this.worldObj.isRemote) return;
-        this.worldObj.markBlockForUpdate(this.xCoord, this.yCoord, this.zCoord);
+    public String[] getDescription() {
+        String[] tooltip = new String[3];
+        tooltip[0] = translateToLocal("gt.casing.no-mob-spawning");
+        tooltip[1] = translateToLocal("EssentiaOutputHatch.tooltip.0");
+        tooltip[2] = translateToLocal("EssentiaOutputHatch.tooltip.1") + " " + MTEHatchEssentiaOutput.CAPACITY;
+        return tooltip;
     }
 
     @Override
-    public void readFromNBT(NBTTagCompound nbttagcompound) {
-        super.readFromNBT(nbttagcompound);
-        this.mAspects.aspects.clear();
-        NBTTagList tlist = nbttagcompound.getTagList("Aspects", 10);
-        for (int j = 0; j < tlist.tagCount(); ++j) {
-            NBTTagCompound rs = tlist.getCompoundTagAt(j);
-            if (rs.hasKey("key")) mAspects.add(Aspect.getAspect(rs.getString("key")), rs.getInteger("amount"));
-        }
+    @SideOnly(Side.CLIENT)
+    public void registerIcons(IIconRegister blockIconRegister) {
+        EHATCH_TX = new Textures.BlockIcons.CustomIcon(GoodGenerator.MOD_ID + ":essentiaOutputHatch");
+        super.registerIcons(blockIconRegister);
     }
 
     @Override
-    public void writeToNBT(NBTTagCompound nbttagcompound) {
-        super.writeToNBT(nbttagcompound);
+    public ITexture[] getTexture(IGregTechTileEntity baseMetaTileEntity, ForgeDirection side, ForgeDirection facing,
+        int colorIndex, boolean active, boolean redstoneLevel) {
+        return new ITexture[] { TextureFactory.of(magicCasing), TextureFactory.of(EHATCH_TX) };
+    }
+
+    // TODO
+    // @Override
+    // public boolean onRightclick(IGregTechTileEntity aBaseMetaTileEntity, EntityPlayer aPlayer) {
+    // ItemStack tItemStack = aPlayer.getHeldItem();
+    // if (tItemStack == null) {
+    // clear();
+    // GTUtility.sendChatTrans(aPlayer, "essentiaoutputhatch.chat.0");
+    // }
+    // return true;
+    // }
+
+    @Override
+    public void saveNBTData(NBTTagCompound nbttagcompound) {
         Aspect[] aspectA = this.mAspects.getAspects();
         NBTTagList nbtTagList = new NBTTagList();
         for (Aspect aspect : aspectA) {
@@ -53,6 +86,42 @@ public class MTEEssentiaOutputHatch extends TileThaumcraft implements IAspectCon
             }
         }
         nbttagcompound.setTag("Aspects", nbtTagList);
+    }
+
+    @Override
+    public void loadNBTData(NBTTagCompound nbttagcompound) {
+        this.mAspects.aspects.clear();
+        NBTTagList tlist = nbttagcompound.getTagList("Aspects", 10);
+        for (int j = 0; j < tlist.tagCount(); ++j) {
+            NBTTagCompound rs = tlist.getCompoundTagAt(j);
+            if (rs.hasKey("key")) mAspects.add(Aspect.getAspect(rs.getString("key")), rs.getInteger("amount"));
+        }
+    }
+
+    @Override
+    public byte getTileEntityBaseType() {
+        return HarvestTool.WrenchLevel2.toTileEntityBaseType();
+    }
+
+    @Override
+    public IMetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
+        return new MTEHatchEssentiaOutput(mName);
+    }
+
+    @Override
+    public boolean allowPullStack(IGregTechTileEntity aBaseMetaTileEntity, int aIndex, ForgeDirection side,
+        ItemStack aStack) {
+        return false;
+    }
+
+    @Override
+    public boolean allowPutStack(IGregTechTileEntity aBaseMetaTileEntity, int aIndex, ForgeDirection side,
+        ItemStack aStack) {
+        return false;
+    }
+
+    public void clear() {
+        this.mAspects.aspects.clear();
     }
 
     private int remainingCapacity() {
@@ -94,6 +163,7 @@ public class MTEEssentiaOutputHatch extends TileThaumcraft implements IAspectCon
             this.markDirty();
             return true;
         } else return false;
+
     }
 
     @Override
